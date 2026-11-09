@@ -10,10 +10,11 @@ import {
   Plus,
   Search,
   ShoppingBasket,
-  Trash2
+  Trash2,
 } from "lucide-react";
 
 import { api, currency } from "../lib/api";
+import { useCartStore } from "../store/cartStore";
 
 const STORAGE_KEY = "lora-shopping-list";
 
@@ -37,7 +38,7 @@ function makeItem(overrides = {}) {
     image: "",
     price: null,
     unit: "",
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -56,27 +57,32 @@ export default function ShoppingListPage() {
   const [loadingRow, setLoadingRow] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const addToCart = useCartStore((state) => state.add);
+  const cartError = useCartStore((state) => state.error);
+  const [addingToCart, setAddingToCart] = useState(false);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
   const pricedItems = useMemo(
     () => items.filter((item) => item.productId && Number(item.price) > 0),
-    [items]
+    [items],
   );
 
   const estimate = useMemo(
     () =>
       pricedItems.reduce(
-        (total, item) => total + Number(item.price) * Number(item.quantity || 1),
-        0
+        (total, item) =>
+          total + Number(item.price) * Number(item.quantity || 1),
+        0,
       ),
-    [pricedItems]
+    [pricedItems],
   );
 
   function updateItem(id, patch) {
     setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...patch } : item))
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     );
   }
 
@@ -95,17 +101,14 @@ export default function ShoppingListPage() {
 
   function addProductToList(rowId, product) {
     const image =
-      product.images?.[0] ||
-      product.image ||
-      product.imageUrl ||
-      "";
+      product.images?.[0] || product.image || product.imageUrl || "";
 
     updateItem(rowId, {
       name: product.name || "",
       productId: product._id || product.id || "",
       image,
       price: Number(product.price || 0),
-      unit: product.unit || ""
+      unit: product.unit || "",
     });
 
     setSuggestions((current) => ({ ...current, [rowId]: [] }));
@@ -121,11 +124,11 @@ export default function ShoppingListPage() {
 
     try {
       const { data } = await api.get("/products/suggestions", {
-        params: { q: query.trim() }
+        params: { q: query.trim() },
       });
       setSuggestions((current) => ({
         ...current,
-        [rowId]: getProductList(data)
+        [rowId]: getProductList(data),
       }));
     } catch {
       setSuggestions((current) => ({ ...current, [rowId]: [] }));
@@ -136,7 +139,7 @@ export default function ShoppingListPage() {
 
   function changeQuantity(item, amount) {
     updateItem(item.id, {
-      quantity: Math.max(1, Number(item.quantity || 1) + amount)
+      quantity: Math.max(1, Number(item.quantity || 1) + amount),
     });
   }
 
@@ -167,6 +170,40 @@ export default function ShoppingListPage() {
 
     setItems([]);
     setSuggestions({});
+  }
+
+  async function addMatchedItemsToCart() {
+    const matchedItems = items.filter(
+      (item) => item.productId && Number(item.quantity) > 0,
+    );
+
+    if (!matchedItems.length) {
+      alert("Add products from the Lo’ra store to your list first.");
+      return;
+    }
+
+    setAddingToCart(true);
+
+    try {
+      for (const item of matchedItems) {
+        await addToCart(
+          {
+            _id: item.productId,
+            name: item.name,
+            image: item.image,
+            images: item.image ? [item.image] : [],
+            price: Number(item.price),
+            unit: item.unit,
+            status: "active",
+            active: true,
+            isAvailable: true,
+          },
+          Number(item.quantity),
+        );
+      }
+    } finally {
+      setAddingToCart(false);
+    }
   }
 
   return (
@@ -257,7 +294,8 @@ export default function ShoppingListPage() {
                               {item.name}
                             </p>
                             <p className="text-xs font-bold text-slate-500">
-                              {currency(item.price)} {item.unit ? `/ ${item.unit}` : ""}
+                              {currency(item.price)}{" "}
+                              {item.unit ? `/ ${item.unit}` : ""}
                             </p>
                           </div>
                           <span className="ml-auto rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-lora-green">
@@ -276,7 +314,7 @@ export default function ShoppingListPage() {
                               productId: "",
                               image: "",
                               price: null,
-                              unit: ""
+                              unit: "",
                             });
                             searchSuggestions(item.id, value);
                           }}
@@ -298,7 +336,9 @@ export default function ShoppingListPage() {
                               <button
                                 key={product._id || product.id}
                                 type="button"
-                                onClick={() => addProductToList(item.id, product)}
+                                onClick={() =>
+                                  addProductToList(item.id, product)
+                                }
                                 className="flex w-full items-center gap-3 p-3 text-left transition hover:bg-emerald-50"
                               >
                                 <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -315,7 +355,8 @@ export default function ShoppingListPage() {
                                     {product.name}
                                   </span>
                                   <span className="mt-0.5 block text-xs font-bold text-slate-500">
-                                    {product.unit || "Item"} · {currency(product.price)}
+                                    {product.unit || "Item"} ·{" "}
+                                    {currency(product.price)}
                                   </span>
                                 </span>
                                 <Plus size={17} className="text-lora-green" />
@@ -361,7 +402,8 @@ export default function ShoppingListPage() {
 
                       {item.productId && Number(item.price) > 0 ? (
                         <p className="mt-3 text-xs font-black text-lora-dark">
-                          Line estimate: {currency(Number(item.price) * Number(item.quantity))}
+                          Line estimate:{" "}
+                          {currency(Number(item.price) * Number(item.quantity))}
                         </p>
                       ) : item.name.trim() ? (
                         <p className="mt-3 text-xs font-bold text-slate-400">
@@ -439,6 +481,20 @@ export default function ShoppingListPage() {
             </button>
           </div>
         </section>
+        <button
+          type="button"
+          onClick={addMatchedItemsToCart}
+          disabled={addingToCart || pricedItems.length === 0}
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-lora-green px-5 text-sm font-black text-white transition hover:bg-lora-dark disabled:cursor-not-allowed disabled:bg-slate-300"
+        >
+          {addingToCart ? "Adding items..." : "Add matched items to cart"}
+        </button>
+
+        {cartError && (
+          <p className="mt-2 rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-600">
+            {cartError}
+          </p>
+        )}
 
         <Link
           to="/shopping-list/search"
