@@ -19,6 +19,7 @@ import HeroSlider from "../components/home/HeroSlider";
 import CategoryScroller from "../components/home/CategoryScroller";
 import ProductSection from "../components/home/ProductSection";
 import HomeWelcome from "../components/home/HomeWelcome";
+import HomeShoppingListCTA from "../components/home/HomeShoppingListCTA";
 
 function getList(data, key) {
   const value = data?.[key] || data?.items || data?.data || data || [];
@@ -253,6 +254,8 @@ export default function Home() {
           </Link>
         </div>
 
+        
+
         <CategoryScroller
           categories={categories}
           selectedCategory={selectedCategory}
@@ -301,6 +304,8 @@ export default function Home() {
           seeAllTo="/products"
         />
       </section>
+
+      <HomeShoppingListCTA />
 
       {dealProducts.length > 0 && (
         <section className="mx-auto mt-6 w-full max-w-7xl px-3 sm:px-5 lg:px-8">

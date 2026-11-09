@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Shell from "./components/Shell";
+
 import Home from "./pages/Home";
 import AuthPage from "./pages/AuthPage";
-import { useAuthStore } from "./store/authStore";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import Checkout from "./pages/Checkout";
@@ -14,6 +14,10 @@ import ProfileSettings from "./pages/ProfileSettings";
 import OrderHistory from "./pages/OrderHistory";
 import WishlistPage from "./pages/WishlistPage";
 import PaymentCallback from "./pages/PaymentCallback";
+import ShoppingListPage from "./pages/ShoppingListPage";
+import ListProductSearchPage from "./pages/ListProductSearchPage";
+
+import { useAuthStore } from "./store/authStore";
 
 function RequireAuth({ children }) {
   const user = useAuthStore((state) => state.user);
@@ -32,6 +36,7 @@ function RequireRole({ role, roles, children }) {
 
   if (!allowedRoles.includes(user.role)) {
     if (user.role === "admin") return <Navigate to="/admin" replace />;
+
     if (["rider", "deliveryBoy"].includes(user.role)) {
       return <Navigate to="/rider" replace />;
     }
@@ -51,6 +56,16 @@ export default function App() {
 
         <Route path="/products" element={<Products />} />
         <Route path="/products/:slug" element={<ProductDetails />} />
+
+        <Route
+          path="/shopping-list"
+          element={<ShoppingListPage />}
+        />
+
+        <Route
+          path="/shopping-list/search"
+          element={<ListProductSearchPage />}
+        />
 
         <Route
           path="/checkout"
